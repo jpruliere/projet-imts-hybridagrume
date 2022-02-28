@@ -2,6 +2,9 @@ Enoncés :
 - [énoncé du jour 1](#jour-1---mise-en-place)
 - [énoncé du jour 2](#jour-2---crud)
 
+Correction (facultif) :
+- [correction du jour 1](./corrections/jour1.md)
+
 # Hybrid'agrume
 
 La société Hybrid'agrume vous contacte pour son projet d'application. Il s'agit d'une entreprise de biochimie qui travaille dans le croisement d'espèces de fruit, spécialisée dans les agrumes.
