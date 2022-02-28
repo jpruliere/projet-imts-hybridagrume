@@ -1,3 +1,7 @@
+Enoncés :
+- [énoncé du jour 1](#jour-1---mise-en-place)
+- [énoncé du jour 2](#jour-2---crud)
+
 # Hybrid'agrume
 
 La société Hybrid'agrume vous contacte pour son projet d'application. Il s'agit d'une entreprise de biochimie qui travaille dans le croisement d'espèces de fruit, spécialisée dans les agrumes.
@@ -99,3 +103,74 @@ Si les maths ne sont pas votre point fort, vous pouvez ouvrir l'indice. Si vous 
 ![gif de victoire](https://media.giphy.com/media/jql8MStpd7x0WtbKxG/giphy.gif)
 
 Si vous avez fait tout ce qui était décrit ci-dessus, bravo ! S'il n'est pas 17h et que vous avez encore envie d'en découdre, tentez [les bonus](./bonus.md) :wink:
+
+# Jour 2 - CRUD
+
+La base est en place, elle contient quelques données, on va pouvoir commencer à développer nos models. Qu'on utilise Sequelize ou pas, c'est comme ça qu'on a tendance à appeler nos composants d'accès aux données. Vous avez probablement entendu parler de l'architecture MVC, c'est ce même M.
+
+## Mise en place
+
+Parce que tout commence par un lien avec la base de données (sans ça, difficile de créer des models), initialisez un projet npm dans votre repo.
+
+Pour le choix du connecteur (natif, query builder ou ORM), désolé, mais vous ne l'aurez pas cette fois-ci. Vous allez utiliser _Knex_.
+
+Je ne vous force pas à utiliser systématiquement ses méthodes chaînables, vous pouvez écrire du SQL brut autant que vous voulez, mais pensez à utiliser des requêtes préparées si vous faîtes ça. Sinon, c'est l'injection SQL qui vous guette.
+
+## findAll
+
+Créez un dossier model, placez-y votre connecteur Knex puis importez-le dans deux nouveaux fichiers dans ce même dossier, un par table. A partir de ce connecteur, écrivez pour chaque table une méthode _findAll_ qui ne prend pas de paramètre et retourne toutes les lignes contenues dans la table sous la forme d'un tableau d'objets.
+
+La méthode permettant de retrouver des variétés devra également contenir les informations liées à leur espèce, grâce à une jointure.
+
+## fichier de test
+
+Avant de passer à la suite, ça pourrait être bien de tester que nos _findAll_ fonctionnent. Comme ce sont des fonctions asynchrones, on ne peut pas juste écrire `await monModel.findAll()` dans un fichier et l'exécuter. Il faut utiliser `.then(console.table)` pour dire que lorsque la promesse de résultat sera remplie, on veut afficher le résultat dans un tableau dans la console.
+
+Exécutez le fichier, si vous voyez vos variétés et vos espèces, c'est gagné.
+
+## findOne
+
+Même principe mais la fonction _findOne_ attend un paramètre, un id, pour ne retourner qu'une seule instance de model.
+
+Testez dans votre fichier avec un id dont vous vous serez assurés de l'existence avant en allant regarder depuis pgAdmin.
+
+## insert et destroy
+
+Ces deux nouvelles méthodes (quatre, si on compte qu'elles doivent exister pour chaque model) attendent un paramètre, mais pas du même type. destroy attend un id, pour ne supprimer qu'une unique ligne dans la db. insert attend un objet, dont les propriétés deviendront les champs d'une nouvelle ligne en SQL.
+
+Là encore, testez jusqu'à ce que tout fonctionne. Petite astuce, testez d'abord les insertions. Dans pgAdmin, récupérez les id des données insérées, vous pourrez les utiliser pour tester la suppression.
+
+## update
+
+Le dernier de la famille, celui qui peut s'avérer délicat quand on fait tout avec le connecteur _pg_ mais qui est une simple formalité avec les autres. Heureusement qu'on utilise Knex, ici, pas vrai ?
+
+La méthode update attend 2 paramètres, un id d'abord pour préciser quelle est la ligne qu'on veut mettre à jour ; puis un objet qui contient les modifications.
+
+Ici encore, tester sera essentiel pour vous assurer que tout marche. Mais puisque vous avez à présent un CRUD complet pour chaque model, pourquoi ne pas chercher un id pertinent dans chaque table via pgAdmin, puis faire, dans cet ordre, findOne > update > findOne. Vous allez voir 2 tableaux apparaître, celui contenant votre ligne avant modification et celui après.
+
+Attention ici, la temporalité est primordiale. Si vous écrivez simplement ce qui suit :
+
+```js
+myModel.findOne(4).then(console.table);
+
+myModel.update(4, { champ1: 'nouvelle valeur', champ2: 'nouvelle valeur' });
+// les 3 requêtes vont partir quasiment en même temps, findOne va récupérer l'ancienne version de la ligne, avant update
+myModel.findOne(4).then(console.table);
+```
+
+Vous allez voir 2 fois la même ligne, vous aurez l'impression que l'update n'a pas marché. Pourtant, il y a des chances qu'il ait bel et bien fonctionné, vous n'avez juste pas attendu que l'update soit terminé pour faire le _findOne_. Comment attendre ? Eh bien, toujours avec then :
+
+```js
+myModel.findOne(4).then(console.table);
+
+myModel.update(4, { champ1: 'nouvelle valeur', champ2: 'nouvelle valeur' }).then(() => {
+  // l'update est terminé, findOne va récupérer la nouvelle version de la ligne d'id 4
+  myModel.findOne(4).then(console.table);
+});
+```
+
+## Finish line
+
+![gif de Salamèche épuisé](https://media.giphy.com/media/PiiQ5B1XxxiX6/giphy.gif)
+
+Pfiou, si vous avez assez écrit de JS et de SQL pour la journée, bonne nouvelle, c'est tout ce que j'attendais de vous pour aujourd'hui. S'il vous reste encore un peu d'énergie, prenez une pause et tentez [les bonus du jour](./bonus2.md)
