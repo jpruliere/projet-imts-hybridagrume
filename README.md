@@ -1,9 +1,11 @@
 Enoncés :
 - [énoncé du jour 1](#jour-1---mise-en-place)
 - [énoncé du jour 2](#jour-2---crud)
+- [énoncé du jour 3](#jour-3---méthodes-spécifiques)
 
 Correction (facultif) :
 - [correction du jour 1](./corrections/jour1.md)
+- [correction du jour 2](./corrections/jour2.md)
 
 # Hybrid'agrume
 
@@ -177,3 +179,95 @@ myModel.update(4, { champ1: 'nouvelle valeur', champ2: 'nouvelle valeur' }).then
 ![gif de Salamèche épuisé](https://media.giphy.com/media/PiiQ5B1XxxiX6/giphy.gif)
 
 Pfiou, si vous avez assez écrit de JS et de SQL pour la journée, bonne nouvelle, c'est tout ce que j'attendais de vous pour aujourd'hui. S'il vous reste encore un peu d'énergie, prenez une pause et tentez [les bonus du jour](./bonus2.md)
+
+# Jour 3 - méthodes spécifiques
+
+On a maintenant un CRUD complet de nos deux tables via nos deux models. On peut ajouter des espèces, modifier une variété, supprimer une espèce et... ah tiens, non, on ne peut pas vraiment supprimer une espèce. Je vous ai volontairement fait supprimer des données que vous veniez d'insérer hier, mais si vous essayez de supprimer l'espèce d'id 3 par exemple (le Citrus maxima, mieux connu sous le nom de pamplemousse), le SGBD ne se laisse pas faire et prétend qu'on viole une contrainte de clé étrangère, allons bon.
+
+C'est en fait bel et bien le cas : si vous retirez l'espèce pamplemousse, que va-t-il advenir des cultivars Honey, Chandler et Sweetie ? Ces 3 variétés ont un *species_id* qui contient 3... Et 3, ça ne désigne plus rien dans la table *species*, c'est donc normal que la clé étrangère vous empêche de supprimer cette espèce.
+
+Pas de panique, ce n'est pas un bug, c'est une fonctionnalité. Les clés étrangères peuvent agir de plusieurs manières lorsqu'on supprime des valeurs de la colonne à laquelle elles font référence, et par défaut, leur comportement est _RESTRICT_, c'est à dire qu'elles se manifestent pour empêcher la suppression.
+
+On peut aussi leur demander de mettre leur valeur à _NULL_ si on suppprimer leur valeur de référence. Mais ici, un cultivar n'ayant pas d'espèce, c'est étrange. C'est bien pour ça qu'on a mis une contrainte _NOT NULL_ sur *species_id*.
+
+On peut enfin demander aux clés étrangères de supprimer les lignes "enfants" lorsqu'on supprime un parent, avec le comportement _CASCADE_ : vous supprimez une ligne de _species_ (le pamplemousse, par exemple) et ça supprime _x_ lignes de _variety_ ayant le *species_id* correspondant (dans ce même exemple, les variétés Honey, Chandler et Sweetie). C'est un comportement pratique mais dangereux, car avec suffisamment de cascades dans une grande base de données, la suppression d'une seule ligne peut en engendrer des centaines d'autres.
+
+Voilà pourquoi le comportement par défaut est _RESTRICT_ et c'est très bien comme ça. Si on demande à Gustave ce qu'il doit se passer lorsqu'on supprime une espèce, je pense qu'il vous répondra le plus simplement du monde : pour quelle obscure raison voudrait-on supprimer une espèce ? Si la société Hybrid'agrume mentionne une espèce dans son catalogue, c'est parce qu'elle propose une ou plusieurs de ses variétés (et qu'elle fait des recherches pour en développer d'autres, probablement).
+
+La méthode `species.destroy` va donc couvrir un seul cas d'usage : celui de la suppression d'une espèce que vous venez d'ajouter par erreur, et qui n'a donc pas de variété.
+
+Pourquoi je vous parle de tout ça ? C'est de la culture générale, c'est toujours bon à savoir :slightly_smiling_face:
+
+Et comment on change ce comportement, si jamais vous en avez besoin un jour ? On ne peut pas une fois la clé étrangère créée, il faut :
+- soit le prévoir au départ
+- soit retirer la clé étrangère avec puis la recréer
+
+Pour ces deux cas, voilà la syntaxe :
+
+```sql
+-- cas de la création d'une table
+CREATE TABLE child (
+  ...
+  parent_id int NOT NULL REFERENCES parent (id) ON DELETE CASCADE, -- ou ON DELETE SET NULL, mais il faudra retirer la contrainte NOT NULL
+  ... 
+);
+
+-- cas de la modification d'une table existante
+-- suppression de la clé étrangère précédente
+-- notez qu'il faut connaître son nom, l'explorateur de pgAdmin peut vous aider pour ça 
+ALTER TABLE child DROP CONSTRAINT child_parent_id_fkey; -- le nom par défaut : table + underscore + champ + underscore + fkey
+-- puis création de la nouvelle
+ALTER TABLE child ADD FOREIGN KEY parent_id REFERENCES parent (id) ON DELETE CASCADE; --ou ON DELETE SET NULL, même remarque concernant l'incompatibilité avec NOT NULL
+```
+
+On commence l'énoncé d'aujourd'hui ?
+
+## INSERT qui retourne quelque chose
+
+REST, parmi ses nombreuses conventions pas toutes très simples à suivre, en définit une qu'on peut respecter facilement : *une route PUT doit retourner la ressource fraîchement insérée, avec une preuve de son insertion*. Ici, la preuve, c'est la présence d'un id. Dans une db relationnelle bien formée, toute donnée qui y est présente possède un id. Si j'envoie un payload pour insérer un cultivar, et qu'on me répond avec les mêmes données que mon payload + un id, je serai sûr et certain que la variété a été insérée.
+
+Mais comment retrouver l'id qui vient d'être inséré ? Et d'éventuelles valeurs par défaut (qu'on ne précise pas dans le payload, donc) ? Il faudrait que l'endpoint d'insertion nous réponde avec toutes les propriétés de l'objet.
+
+Je vous laisse chercher dans [la documentation d'INSERT](https://www.postgresql.org/docs/14/sql-insert.html) ce qui pourrait permettre de _retourner_ des données issues de l'insertion.
+
+Côté Knex, cherchez le mot clé dans la doc, il existe en méthode chaînable :heart_eyes:
+
+Précision utile : ce que je demande ici, ce n'est pas de coder le serveur Express et sa route _PUT_, uniquement de faire en sorte que les méthodes d'insertion retournent la ressource insérée. Ce qui nous facilitera la tâche quand on créera le serveur.
+
+## Filtrer par amertume ou par jutosité
+
+Un des cas d'usage de l'application de Gustave, c'est l'utilisation en tant que catalogue par les plantations qui achètent des arbres fruitiers à Hybrid'agrume. Ils ont alors besoin de retrouver rapidement des variétés et notamment de pouvoir les filtrer en fonction de leurs deux scores.
+
+Vous allez implémenter les quatres méthodes suivantes (elles attendent toutes un nombre entre 0 et 5 en guise de param) :
+- `findByMinJuiciness(minJu)` qui ne retourne que les variétés dont la jutosité est supérieure ou égale à _minJu_
+- `findByMaxJuiciness(maxJu)` qui ne retourne que les variétés dont la jutosité est inférieure ou égale à _maxJu_
+- `findByMinBitterness(minBi)` qui ne retourne que les variétés dont la jutosité est supérieure ou égale à _minBi_
+- `findByMaxBitterness(minBi)` qui ne retourne que les variétés dont la jutosité est inférieure ou égale à _maxBi_
+
+Oui, vous vous en doutez, ça va créer du code qui se répète. Mais ici, difficile de factoriser sans rendre votre code beaucoup plus complexe, donc tant pis, répétez votre code, profitez-en même pour utiliser le copier/coller pour coder les 3 autres une fois que la première est codée.
+
+Attention, tout doit être testé. Mais là encore, vous pourrez copier/coller vos tests pour gagner du temps.
+
+## Les espèces par famille, les variétés par nom d'espèce
+
+Dans le catalogue, il y aura aussi un champ de recherche textuelle. La recherche textuelle dans une application frontend, c'est une chouette fonctionnalité. Côté backend, ça peut vite devenir un cauchemar quand un unique champ permet de chercher des infos issues de 20 colonnes différentes.
+
+Pour l'instant, on n'y est pas. Ce champ va juste permettre de filtrer des espèces par famille lorsqu'on est sur la page qui liste les familles ; et des variétés par espèce lorsqu'on a sous les yeux la liste des espèces. Pas par *species_id*, non non, par *nom d'espèce*. Si je tape _pamplemousse_ dans le champ, seules les 3 variétés de pamplemousse Honey, Chandler et Sweetie doivent s'afficher. Pour ça, vous aurez besoin d'une jointure, tout simplement. Entraînez-vous en SQL depuis pgAdmin avant de coder ça en JS.
+
+Vous pouvez nommer ces fonctions `findByFamily(family)` et `findBySpecies(speciesName)` respectivement.
+
+## La même, mais avec de la recherche progressive
+
+Ce qu'on appelle la recherche progressive en UX, c'est le fait que la recherche se lance dès qu'on saisit les quelques premiers caractères de notre critère dans le champ de recherche. Au fur et à mesure qu'on tape, la recherche s'affine.
+
+Ce que ça signifie concrètement côté backend, c'est qu'on va recevoir des choses comme `pampl` en guise de recherche et qu'il va falloir s'en contenter pour trouver les bonnes variétés. Comme il y a assez peu d'espèces dans notre base, la plupart commence par des lettres différentes mais vous pourrez tester en tapant `citr` par exemple, qui devra retourner les variétés de **citr**on vert ET celles de **citr**on jaune, soit dans un même array : le 'Bonnie Brae', le 'Eureka' et le sur 'Macrophylla'.
+
+Et comment on fait ça en SQL, rechercher un chaîne *qui commence* par des caractères. Eh bien, vous allez le trouver par vous-même :wink:
+
+On n'oublie pas de tester pour s'assurer que ça marche, siouplaît.
+
+## Finish line
+
+![gif de victoire tranquille](https://media.giphy.com/media/yjukPn2GGbMC4/giphy.gif)
+
+Bravo, vous y êtes arrivé.e, ça vaut bien une petite pause pour respirer le bon air frais de l'extérieur et boire un café, un thé ou un apéro en fonction de l'heure. Par contre, s'il est encore trop tôt pour un apéro, il est aussi trop tôt pour s'arrêter en si bon chemin. Place aux [bonus](./bonus3.md)
