@@ -5,7 +5,7 @@ const findAll = async () => {
 };
 
 const findOne = async (id) => {
-  return await knex('species').select().where({ id }); // comme vu en cours, on passe un objet à .where et il se débrouille, pratique
+  return await knex('species').select().where({ id }).first(); // comme vu en cours, on passe un objet à .where et il se débrouille, pratique
 };
 
 const insert = async (payload) => {

@@ -20,7 +20,8 @@ const findOne = async (id) => {
       'species.family'
     ])
     .join('species', 'species.id', '=', 'variety.species_id')
-    .where({ 'variety.id': id }); // attention, ici, id est ambigü, il faut préciser de quel id on parle
+    .where({ 'variety.id': id })
+    .first(); // attention, ici, id est ambigü, il faut préciser de quel id on parle
 };
 
 const insert = async (payload) => {
