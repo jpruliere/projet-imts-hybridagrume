@@ -1,4 +1,4 @@
-# Correction du jour 1
+# Correction du jour 2
 
 Parce qu'un bon code vaut mieux qu'un long discours, je vais surtout t'inviter à regarder attentivement le contenu du dossier [app_jour2](./app_jour2), notamment les commentaires dans le code.
 

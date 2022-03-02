@@ -7,6 +7,7 @@ Enoncés :
 Correction (facultif) :
 - [correction du jour 1](./corrections/jour1.md)
 - [correction du jour 2](./corrections/jour2.md)
+- [correction du jour 3](./corrections/jour3.md)
 
 # Hybrid'agrume
 
