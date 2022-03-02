@@ -2,6 +2,7 @@ Enoncés :
 - [énoncé du jour 1](#jour-1---mise-en-place)
 - [énoncé du jour 2](#jour-2---crud)
 - [énoncé du jour 3](#jour-3---méthodes-spécifiques)
+- [énoncé du jour 4](#jour-4---api-rest)
 
 Correction (facultif) :
 - [correction du jour 1](./corrections/jour1.md)
@@ -271,3 +272,39 @@ On n'oublie pas de tester pour s'assurer que ça marche, siouplaît.
 ![gif de victoire tranquille](https://media.giphy.com/media/yjukPn2GGbMC4/giphy.gif)
 
 Bravo, vous y êtes arrivé.e, ça vaut bien une petite pause pour respirer le bon air frais de l'extérieur et boire un café, un thé ou un apéro en fonction de l'heure. Par contre, s'il est encore trop tôt pour un apéro, il est aussi trop tôt pour s'arrêter en si bon chemin. Place aux [bonus](./bonus3.md)
+
+# Jour 4 - API REST
+
+L'application fonctionne à merveille, tout est là. Tout, sauf une interface web pour interagir avec nos données. Puisque tout est là _côté données_ et que vous avez déjà eu quelques occasions d'utiliser Express et ses middlewares, il ne devrait pas vous falloir tant de temps que ça pour créer l'API web d'Hybrid'agrume.
+
+Le développeur frontend a déjà fini son application mais vous ne pouvez pas y avoir accès car il ne l'a pas encore livrée. Puisqu'il a fini son travail, c'est lui qui a décidé du nom des endpoints que vous allez créer. Ce n'est pas un souci car il est parti du principe que vous alliez respecter les conventions REST en termes de nommage, d'utilisation des méthodes HTTP etc.
+
+Il a fourni une magnifique documentation Swagger (un outil qui sert principalement à formater la doc d'une API REST) disponible [ici](https://jpruliere.github.io/projet-imts-hybridagrume/). Vous trouverez, en explorant cette documentation, toutes les infos dont vous avez besoin pour mettre en place l'API qui fonctionnera parfaitement avec le frontend.
+
+## Quelques petits conseils quand même
+
+- Procédez route par route et testez avec Postman.
+- Ignorez pour l'instant les différents [codes de réponse](https://fr.wikipedia.org/wiki/Liste_des_codes_HTTP) pour chaque endpoint.
+- Vérifiez bien le nom de chaque endpoint, il doit correspondre parfaitement, sinon l'app front essayera de contacter des endpoints qui n'existent pas dans votre API.
+- Si vous n'avez pas codé la méthode `findBetween` (bonus du jour 3), vous pouvez la reprendre de la correction pour vous permettre de coder l'endpoint correspondant.
+
+## Une fois que c'est fini
+
+Cet après-midi, vous allez présenter votre travail. S'il est midi et quelques au moment où vous terminez votre API, restez-en là, refaites un tour de l'application, commentez les parties un peu obscures dont vous n'êtes pas complètement sûr.e du fonctionnement. Sinon, vous pouvez commencer à gérer les différents codes de réponse des endpoints.
+
+- Pour les routes GET, qui retournent soit une ressource soit un ensemble de ressources, le code est 200, mais c'est le code par défaut, il n'y a rien à modifier.
+- Idem pour les routes PUT, qui retournent la ressource modifiée en guise de preuve qu'elle a bien été modifiée.
+- 201 et 204 sont des codes de succès indiquant chacun une particularité de la réponse :
+  - 201 signifie que la ressource a été créée (routes POST), et la ressource retournée, avec son id, en est bien la preuve.
+  - 204 signifie qu'on n'envoie pas de contenu, juste le code, ce qui est cohérent pour les routes DELETE, vu que le contenu... vous venez de le supprimer.
+- 404, vous connaissez bien ce code normalement, ici il va permettre de prévenir le client qu'il essaye d'accéder à une ressource qui n'existe pas (= dont l'id ne correspond à rien dans la db). Le plus simple pour gérer correctement ces cas, c'est de lancer un `findOne` avec l'id demandé avant de réaliser l'action attendue de l'endpoint. Si cet appel ne retourne rien, vous pouvez interrompre le middleware et répondre 404.
+  - Les endpoints de type `GET /ressources/:id`, utilisent déjà `findOne` pour retourner la ressource. Pas besoin d'invoquer `findOne` avant de relancer la même fonction, gérez plutôt ce qu'elle retourne : si elle retourne quelque chose, renvoyez 200, si elle ne retourne rien (qui est assimilable à _false_), renvoyez 404.
+- 400, c'est pour tous les cas où les données envoyées par le client (un id dans l'url, un objet dans le body etc.) sont malformées. Ex: `GET /varieties/tralala`, cet endpoint s'attend à recevoir un nombre, l'id d'une variété, mais il a reçu "tralala" : ça ne va pas marcher, il faut renvoyer une 400.
+  - Pour les vérifications simples, comme l'id, vous pouvez utiliser du JS natif (`parseInt` par exemple)
+  - Pour vérifier le format d'un payload, penchez plutôt pour Joi.
+
+## True finish line
+
+![gif de véritable victoire](https://media.giphy.com/media/u3xrWx0ni9EZy/giphy.gif)
+
+Si vous arrivez à réaliser tout ça avant la présentation de cet après-midi, chapeau ! Sinon, c'est pas grave, vous pourrez tout de même finir ça tranquillement quand vous trouverez le temps. Ca fera un beau projet dans votre portfolio.
